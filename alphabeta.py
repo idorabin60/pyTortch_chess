@@ -1,7 +1,42 @@
 import chess
 from evaluate import evaluate_board
 
-def minimax_alpha_beta(board, depth, alpha, beta, is_maximizing):
+def quiescence_search(board, alpha, beta, is_maximizing, eval_func):
+    stand_pat = eval_func(board)
+
+    if is_maximizing:
+        if stand_pat >= beta:
+            return beta
+        alpha = max(alpha, stand_pat)
+        
+        capture_moves = [m for m in board.legal_moves if board.is_capture(m)]
+        for move in capture_moves:
+            board.push(move)
+            score = quiescence_search(board, alpha, beta, False, eval_func)
+            board.pop()
+            
+            if score >= beta:
+                return beta
+            alpha = max(alpha, score)
+        return alpha
+    else:
+        if stand_pat <= alpha:
+            return alpha
+        beta = min(beta, stand_pat)
+        
+        capture_moves = [m for m in board.legal_moves if board.is_capture(m)]
+        for move in capture_moves:
+            board.push(move)
+            score = quiescence_search(board, alpha, beta, True, eval_func)
+            board.pop()
+            
+            if score <= alpha:
+                return alpha
+            beta = min(beta, score)
+        return beta
+
+
+def minimax_alpha_beta(board, depth, alpha, beta, is_maximizing, eval_func=evaluate_board):
     """
     Minimax with Alpha-Beta Pruning.
     alpha: The best score White can guarantee (initially -infinity)
@@ -9,13 +44,13 @@ def minimax_alpha_beta(board, depth, alpha, beta, is_maximizing):
     """
     
     if depth == 0 or board.is_game_over():
-        return evaluate_board(board)
+        return quiescence_search(board, alpha, beta, is_maximizing, eval_func)
 
     if is_maximizing:
         best_eval = -float('inf')
         for move in board.legal_moves:
             board.push(move)
-            eval_score = minimax_alpha_beta(board, depth - 1, alpha, beta, False)
+            eval_score = minimax_alpha_beta(board, depth - 1, alpha, beta, False, eval_func)
             board.pop()
             
             best_eval = max(best_eval, eval_score)
@@ -35,7 +70,7 @@ def minimax_alpha_beta(board, depth, alpha, beta, is_maximizing):
         best_eval = float('inf')
         for move in board.legal_moves:
             board.push(move)
-            eval_score = minimax_alpha_beta(board, depth - 1, alpha, beta, True)
+            eval_score = minimax_alpha_beta(board, depth - 1, alpha, beta, True, eval_func)
             board.pop()
             
             best_eval = min(best_eval, eval_score)

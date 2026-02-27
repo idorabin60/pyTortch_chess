@@ -1,3 +1,4 @@
+#!/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11
 import sys
 import chess
 from integration import get_best_move_with_ai
@@ -65,13 +66,14 @@ def main():
         # 5. 'go' command: The GUI wants us to think and make a move!
         # e.g.: "go wtime 300000 btime 300000" or "go depth 3"
         elif line.startswith("go"):
-            # For this MVP, we will just ignore exactly what the GUI is asking for 
-            # (time limits, specific depths) and always search at Depth 2.
-            # Depth 2 ensures the untrained AI replies instantly.
-            
-            # (In production, you'd parse 'wtime', 'btime', 'depth' and pass them
-            # to a much smarter time-management function)
-            depth_to_search = 2
+            # Default to Depth 3 for a strong, computationally reasonable search
+            depth_to_search = 3
+            parts = line.split()
+            if "depth" in parts:
+                try:
+                    depth_to_search = int(parts[parts.index("depth") + 1])
+                except Exception:
+                    pass
             
             best_move = get_best_move_with_ai(board, depth=depth_to_search)
             

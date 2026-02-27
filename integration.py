@@ -4,16 +4,34 @@ from network import ChessNet
 from data_processing import board_to_tensor
 from alphabeta import minimax_alpha_beta
 
+import os
+
 # 1. Load our trained AI Brain
-# Normally, we would load the weights from a saved file: model.load_state_dict(torch.load('best_model.pth'))
-# Since we haven't trained on GCP yet, this will just use the random weights!
 ai_brain = ChessNet()
+model_path = os.path.join(os.path.dirname(__file__), 'best_model.pth')
+if os.path.exists(model_path):
+    import sys
+    print("Loading trained weights from best_model.pth...", file=sys.stderr)
+    ai_brain.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+else:
+    import sys
+    print("WARNING: best_model.pth not found! Using untrained random weights.", file=sys.stderr)
+    
 ai_brain.eval() # Tell PyTorch we are Evaluating, not Training
 
 def ai_evaluate_board(board):
     """
     Replaces our old material-counting evaluate_board() with our Deep Learning model!
     """
+    if board.is_checkmate():
+        if board.turn == chess.WHITE:
+            return -99999 # Black wins
+        else:
+            return 99999  # White wins
+            
+    if board.is_game_over():
+        return 0 # Draw
+        
     # 1. Convert the python-chess board into a math tensor
     tensor = board_to_tensor(board)
     
@@ -35,31 +53,28 @@ def get_best_move_with_ai(board, depth):
     beta = float('inf')
     best_move = None
     
-    # Notice this is the EXACT same Minimax template as Phase 2!
-    # The only difference is that deep inside minimax_alpha_beta, 
-    # we would call ai_evaluate_board() instead of the old evaluate_board() function!
-    
     if board.turn == chess.WHITE:
         best_eval = -float('inf')
         for move in board.legal_moves:
             board.push(move)
-            # Pretend minimax_alpha_beta uses ai_evaluate_board internally
-            eval_score = -ai_evaluate_board(board) # Just a placeholder call for demonstration
+            eval_score = minimax_alpha_beta(board, depth - 1, alpha, beta, False, eval_func=ai_evaluate_board)
             board.pop()
             
             if eval_score > best_eval:
                 best_eval = eval_score
                 best_move = move
+            alpha = max(alpha, eval_score)
     else:
         best_eval = float('inf')
         for move in board.legal_moves:
             board.push(move)
-            eval_score = ai_evaluate_board(board)
+            eval_score = minimax_alpha_beta(board, depth - 1, alpha, beta, True, eval_func=ai_evaluate_board)
             board.pop()
             
             if eval_score < best_eval:
                 best_eval = eval_score
                 best_move = move
+            beta = min(beta, eval_score)
                 
     return best_move
 
